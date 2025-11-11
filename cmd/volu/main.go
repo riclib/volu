@@ -463,20 +463,27 @@ func handleWalkerAction(action string) error {
 // Radio command
 
 var radioCmd = &cobra.Command{
-	Use:   "radio <series> <count>",
+	Use:   "radio <series> [count]",
 	Short: "Play random episodes from a radio series",
 	Long: `Search for albums matching a radio series pattern, randomly select N albums,
 and queue them for playback. Shuffle is automatically disabled.
 
 Series are defined in the config file (~/.config/volu/config.yaml).
 
-Example: volu radio asot 3`,
-	Args: cobra.ExactArgs(2),
+Example: volu radio asot 3
+         volu radio bb      # defaults to 10 albums`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		seriesName := args[0]
-		count, err := strconv.Atoi(args[1])
-		if err != nil || count < 1 {
-			return fmt.Errorf("count must be a positive integer (got: %s)", args[1])
+
+		// Default to 10 albums if count not provided
+		count := 10
+		if len(args) == 2 {
+			var err error
+			count, err = strconv.Atoi(args[1])
+			if err != nil || count < 1 {
+				return fmt.Errorf("count must be a positive integer (got: %s)", args[1])
+			}
 		}
 
 		// Get series config
