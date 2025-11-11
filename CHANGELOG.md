@@ -20,11 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.example.yaml` with comprehensive examples and documentation
 
 #### Radio Series Feature
-- **`volu radio <series> <count>` command** for playing random episodes from configured radio series
+- **`volu radio <series> [count]` command** for playing random episodes from configured radio series
   - Searches music library for albums matching configured patterns
-  - Randomly selects N albums and queues them
+  - Randomly selects N albums and queues them (defaults to 10 if count not specified)
   - Automatically disables shuffle to maintain album track order
   - Desktop notifications for search progress and success
+- **Direct series invocation** - radio series can be invoked without the `radio` keyword
+  - `volu asot` plays 10 random ASOT episodes (equivalent to `volu radio asot 10`)
+  - `volu bb 5` plays 5 random Buddha Bar albums (equivalent to `volu radio bb 5`)
+  - Config-driven validation against `config.Radio` map
+  - No command name conflicts (Cobra resolves exact matches first)
+  - Elegant implementation using root command's `RunE` handler
 - Search API integration (`/api/v1/search`)
   - `Search()` method in volumio client for raw search
   - `SearchAlbums()` method with client-side filtering for albums only
