@@ -48,6 +48,32 @@ func main() {
 			}
 			client = volumio.NewClientWithHost(volumioHost)
 		},
+		// Allow direct radio series invocation: volu <series> [count]
+		Args: cobra.MaximumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// If no args, show help
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			// Check if first arg is a radio series
+			seriesName := args[0]
+			if _, exists := cfg.Radio[seriesName]; exists {
+				// This is a radio series! Handle it like "volu radio <series> [count]"
+				count := 10
+				if len(args) == 2 {
+					var err error
+					count, err = strconv.Atoi(args[1])
+					if err != nil || count < 1 {
+						return fmt.Errorf("count must be a positive integer (got: %s)", args[1])
+					}
+				}
+				return playRadioSeries(seriesName, count)
+			}
+
+			// Not a radio series, show error
+			return fmt.Errorf("unknown command %q. See 'volu --help' for available commands", args[0])
+		},
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&volumioHost, "host", "H", "", "Volumio host (default: $VOLUMIO_HOST or volumio.local)")
@@ -460,6 +486,36 @@ func handleWalkerAction(action string) error {
 	}
 }
 
+// Helper function to play radio series
+func playRadioSeries(seriesName string, count int) error {
+	// Get series config
+	series, exists := cfg.Radio[seriesName]
+	if !exists {
+		return fmt.Errorf("unknown radio series: %s (check your config file at ~/.config/volu/config.yaml)", seriesName)
+	}
+
+	// Create radio player
+	player := radio.NewPlayer(client)
+
+	// Show search notification
+	notify("Volumio Radio",
+		fmt.Sprintf("Searching for %s episodes...", series.Name),
+		"media-playlist-shuffle", false)
+
+	// Play random episodes
+	if err := player.PlayRandomEpisodes(series.SearchQuery, series.Pattern, count); err != nil {
+		notify("Volumio Error", err.Error(), "error", true)
+		return err
+	}
+
+	// Success notification
+	notify("Volumio Radio",
+		fmt.Sprintf("Playing %d random %s episodes", count, series.Name),
+		"media-playback-start", false)
+
+	return nil
+}
+
 // Radio command
 
 var radioCmd = &cobra.Command{
@@ -486,32 +542,7 @@ Example: volu radio asot 3
 			}
 		}
 
-		// Get series config
-		series, exists := cfg.Radio[seriesName]
-		if !exists {
-			return fmt.Errorf("unknown radio series: %s (check your config file at ~/.config/volu/config.yaml)", seriesName)
-		}
-
-		// Create radio player
-		player := radio.NewPlayer(client)
-
-		// Show search notification
-		notify("Volumio Radio",
-			fmt.Sprintf("Searching for %s episodes...", series.Name),
-			"media-playlist-shuffle", false)
-
-		// Play random episodes
-		if err := player.PlayRandomEpisodes(series.SearchQuery, series.Pattern, count); err != nil {
-			notify("Volumio Error", err.Error(), "error", true)
-			return err
-		}
-
-		// Success notification
-		notify("Volumio Radio",
-			fmt.Sprintf("Playing %d random %s episodes", count, series.Name),
-			"media-playback-start", false)
-
-		return nil
+		return playRadioSeries(seriesName, count)
 	},
 }
 
