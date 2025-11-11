@@ -46,7 +46,7 @@ volu status
 
 ## Waybar Setup (2 minutes)
 
-1. **Add to waybar config** (`~/.config/waybar/config`):
+1. **Add to waybar config** (`~/.config/waybar/config.jsonc`):
 
 ```jsonc
 {
@@ -62,7 +62,16 @@ volu status
 }
 ```
 
-2. **Restart Waybar**:
+2. **Add styling** (`~/.config/waybar/style.css`):
+
+```css
+#custom-volumio {
+  min-width: 12px;
+  margin: 0 7.5px;
+}
+```
+
+3. **Restart Waybar**:
 
 ```bash
 killall waybar && waybar &
@@ -81,7 +90,7 @@ cmd = "volu walker"
 2. **Test**:
 
 ```bash
-walker --modules volumio
+walker -m volumio
 ```
 
 ## Hyprland Keybindings (1 minute)

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Waybar markup escaping** - Fixed GTK warnings when song metadata contains special characters
+  - Added `EscapeMarkup()` function to properly escape Pango markup characters (`&`, `<`, `>`, `'`, `"`)
+  - Applied escaping to both main text display and tooltip
+  - Prevents errors like "Entity did not end with a semicolon" for artist names containing ampersands
+  - Comprehensive test coverage for markup escaping
+
+### Changed
+- Updated QUICKSTART.md with Waybar CSS styling instructions
+- Fixed walker test command in QUICKSTART.md (changed `--modules` to `-m`)
+
 ### Added
 
 #### Configuration System

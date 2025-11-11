@@ -3,6 +3,7 @@ package waybar
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/riclib/volu/internal/volumio"
 )
@@ -13,6 +14,16 @@ type Output struct {
 	Tooltip    string `json:"tooltip"`
 	Class      string `json:"class"`
 	Percentage int    `json:"percentage"`
+}
+
+// EscapeMarkup escapes special characters for Pango markup
+func EscapeMarkup(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "'", "&apos;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	return s
 }
 
 // FormatTime formats seconds as MM:SS
@@ -62,20 +73,20 @@ func CreateOutput(state *volumio.PlayerState, baseURL string) Output {
 		if artist == "" {
 			artist = "Unknown Artist"
 		}
-		text = fmt.Sprintf("♫ %s - %s", artist, state.Title)
+		text = fmt.Sprintf("♫ %s - %s", EscapeMarkup(artist), EscapeMarkup(state.Title))
 	}
 	text = fmt.Sprintf("%s %s", text, statusIcon)
 
 	// Build tooltip
 	tooltip := ""
 	if state.Title != "" {
-		tooltip += fmt.Sprintf("Title: %s\n", state.Title)
+		tooltip += fmt.Sprintf("Title: %s\n", EscapeMarkup(state.Title))
 	}
 	if state.Artist != "" {
-		tooltip += fmt.Sprintf("Artist: %s\n", state.Artist)
+		tooltip += fmt.Sprintf("Artist: %s\n", EscapeMarkup(state.Artist))
 	}
 	if state.Album != "" {
-		tooltip += fmt.Sprintf("Album: %s\n", state.Album)
+		tooltip += fmt.Sprintf("Album: %s\n", EscapeMarkup(state.Album))
 	}
 	if state.Service != "" {
 		tooltip += fmt.Sprintf("Service: %s\n", state.Service)
