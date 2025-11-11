@@ -77,22 +77,6 @@ volu status
 killall waybar && waybar &
 ```
 
-## Walker Setup (1 minute)
-
-1. **Add to walker config** (`~/.config/walker/config.toml`):
-
-```toml
-[[plugins]]
-name = "volumio"
-cmd = "volu walker"
-```
-
-2. **Test**:
-
-```bash
-walker -m volumio
-```
-
 ## Hyprland Keybindings (1 minute)
 
 Add to `~/.config/hypr/hyprland.conf`:
@@ -143,8 +127,7 @@ waybar 2>&1 | grep volumio
 ## Next Steps
 
 - Read the full [README.md](README.md) for all features
-- Set up elephant provider: `volu elephant`
 - Customize keybindings
-- Add CSS styling for Waybar
+- Try the radio feature: `volu radio asot 5`
 
 Enjoy! 🎵

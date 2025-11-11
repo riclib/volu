@@ -10,13 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Waybar markup escaping** - Fixed GTK warnings when song metadata contains special characters
   - Added `EscapeMarkup()` function to properly escape Pango markup characters (`&`, `<`, `>`, `'`, `"`)
-  - Applied escaping to both main text display and tooltip
+  - Applied escaping to both main text display and tooltip in waybar output
   - Prevents errors like "Entity did not end with a semicolon" for artist names containing ampersands
-  - Comprehensive test coverage for markup escaping
+  - Comprehensive test coverage for markup escaping in waybar_test.go
+- **Elephant provider improvements** - Fixed JSON output formatting
+  - Removed log output that interfered with JSON parsing
+  - Added stdin detection to prevent hanging when called without input
+  - Provider now outputs clean JSON for integration with launchers
 
 ### Changed
 - Updated QUICKSTART.md with Waybar CSS styling instructions
-- Fixed walker test command in QUICKSTART.md (changed `--modules` to `-m`)
+- Removed Walker plugin setup from QUICKSTART (integration needs further work)
+- Improved elephant provider to be non-blocking and cleaner
 
 ### Added
 

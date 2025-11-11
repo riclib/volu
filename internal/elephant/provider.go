@@ -3,7 +3,6 @@ package elephant
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/riclib/volu/internal/volumio"
@@ -39,16 +38,25 @@ type Response struct {
 
 // Run starts the Elephant provider
 func (p *Provider) Run() error {
-	log.Println("Starting Volumio Elephant provider...")
-
 	// Elephant providers work by reading JSON from stdin and outputting JSON to stdout
-	// For now, we'll implement a basic structure
+	// Note: Do not log to stdout as it will break JSON parsing
 
-	// Read input (if any) from stdin
+	// Check if stdin has data available
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return p.ShowMainMenu()
+	}
+
+	// If no pipe/input, show main menu immediately
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		return p.ShowMainMenu()
+	}
+
+	// Read input from stdin
 	var input map[string]interface{}
 	decoder := json.NewDecoder(os.Stdin)
 	if err := decoder.Decode(&input); err != nil {
-		// No input or invalid - show main menu
+		// Invalid input - show main menu
 		return p.ShowMainMenu()
 	}
 
@@ -64,7 +72,7 @@ func (p *Provider) Run() error {
 func (p *Provider) ShowMainMenu() error {
 	state, err := p.client.GetState()
 	if err != nil {
-		log.Printf("Warning: Could not get Volumio state: %v", err)
+		// Silently handle error - just show menu without state
 		state = nil
 	}
 
@@ -197,8 +205,6 @@ func (p *Provider) ShowMainMenu() error {
 
 // HandleAction handles an action from a selected entry
 func (p *Provider) HandleAction(action string) error {
-	log.Printf("Handling action: %s", action)
-
 	// Parse action type
 	if len(action) > 7 && action[:7] == "action:" {
 		cmd := action[7:]
