@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
+	"github.com/riclib/volu/internal/config"
 	"github.com/riclib/volu/internal/elephant"
+	"github.com/riclib/volu/internal/radio"
 	"github.com/riclib/volu/internal/volumio"
 	"github.com/riclib/volu/internal/walker"
 	"github.com/riclib/volu/internal/waybar"
@@ -16,6 +19,7 @@ import (
 var (
 	volumioHost string
 	client      *volumio.Client
+	cfg         *config.Config
 )
 
 func main() {
@@ -24,11 +28,22 @@ func main() {
 		Short: "Control your Volumio music player",
 		Long:  `volu is a CLI tool for controlling Volumio music players from the command line.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Initialize client with host from flag or environment
+			// Load config file
+			var err error
+			cfg, err = config.Load()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Could not load config: %v\n", err)
+				cfg = config.DefaultConfig()
+			}
+
+			// Priority: flag → config file → env var → default
 			if volumioHost == "" {
-				volumioHost = os.Getenv("VOLUMIO_HOST")
+				volumioHost = cfg.Host
 				if volumioHost == "" {
-					volumioHost = "volumio.local"
+					volumioHost = os.Getenv("VOLUMIO_HOST")
+					if volumioHost == "" {
+						volumioHost = "volumio.local"
+					}
 				}
 			}
 			client = volumio.NewClientWithHost(volumioHost)
@@ -55,6 +70,9 @@ func main() {
 	// Playback mode commands
 	rootCmd.AddCommand(shuffleCmd)
 	rootCmd.AddCommand(repeatCmd)
+
+	// Radio command
+	rootCmd.AddCommand(radioCmd)
 
 	// Waybar command
 	rootCmd.AddCommand(waybarCmd)
@@ -440,6 +458,54 @@ func handleWalkerAction(action string) error {
 	default:
 		return fmt.Errorf("unknown action: %s", action)
 	}
+}
+
+// Radio command
+
+var radioCmd = &cobra.Command{
+	Use:   "radio <series> <count>",
+	Short: "Play random episodes from a radio series",
+	Long: `Search for albums matching a radio series pattern, randomly select N albums,
+and queue them for playback. Shuffle is automatically disabled.
+
+Series are defined in the config file (~/.config/volu/config.yaml).
+
+Example: volu radio asot 3`,
+	Args: cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		seriesName := args[0]
+		count, err := strconv.Atoi(args[1])
+		if err != nil || count < 1 {
+			return fmt.Errorf("count must be a positive integer (got: %s)", args[1])
+		}
+
+		// Get series config
+		series, exists := cfg.Radio[seriesName]
+		if !exists {
+			return fmt.Errorf("unknown radio series: %s (check your config file at ~/.config/volu/config.yaml)", seriesName)
+		}
+
+		// Create radio player
+		player := radio.NewPlayer(client)
+
+		// Show search notification
+		notify("Volumio Radio",
+			fmt.Sprintf("Searching for %s episodes...", series.Name),
+			"media-playlist-shuffle", false)
+
+		// Play random episodes
+		if err := player.PlayRandomEpisodes(series.SearchQuery, series.Pattern, count); err != nil {
+			notify("Volumio Error", err.Error(), "error", true)
+			return err
+		}
+
+		// Success notification
+		notify("Volumio Radio",
+			fmt.Sprintf("Playing %d random %s episodes", count, series.Name),
+			"media-playback-start", false)
+
+		return nil
+	},
 }
 
 // Elephant provider

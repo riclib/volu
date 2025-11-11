@@ -5,6 +5,8 @@ A modern Go-based CLI tool for controlling [Volumio](https://volumio.com) music 
 ## Features
 
 - **CLI Control**: Simple command-line interface for all playback operations
+- **Radio Series**: Play random episodes from your favorite radio shows (ASOT, Group Therapy, etc.)
+- **YAML Configuration**: Optional config file for host and radio series settings
 - **Waybar Integration**: Real-time status display in your status bar
 - **Walker Plugin**: Browse and control music through Walker launcher
 - **Elephant Provider**: Native integration with the Elephant launcher (coming soon)
@@ -24,7 +26,32 @@ sudo mv volu /usr/local/bin/
 
 ### Configuration
 
-Set your Volumio host (optional, defaults to `volumio.local`):
+#### Config File (Recommended)
+
+Create `~/.config/volu/config.yaml`:
+
+```yaml
+# Volumio host configuration
+host: volumio.local  # or IP address like 192.168.1.100
+
+# Radio series for 'volu radio' command (optional)
+radio:
+  asot:
+    name: "A State of Trance"
+    search_query: "ASOT"
+    pattern: "^ASOT\\s+\\d+"
+
+  grouptherapy:
+    name: "Group Therapy"
+    search_query: "Group Therapy"
+    pattern: "Group Therapy\\s+\\d+"
+```
+
+See `config.example.yaml` for more examples and regex pattern tips.
+
+#### Environment Variable
+
+Alternatively, set your Volumio host via environment variable:
 
 ```bash
 export VOLUMIO_HOST="volumio.local"
@@ -33,6 +60,8 @@ export VOLUMIO_HOST="192.168.1.100"
 ```
 
 Add to your `~/.bashrc` or `~/.zshrc` to make it permanent.
+
+**Priority:** CLI flag `--host` → Config file → `VOLUMIO_HOST` env → default `volumio.local`
 
 ## Usage
 
@@ -59,6 +88,41 @@ volu repeat         # Toggle repeat
 # Status
 volu status         # Show current playback info
 ```
+
+### Radio Series
+
+Play random episodes from your favorite radio shows (requires configuration):
+
+```bash
+# Play 3 random A State of Trance episodes
+volu radio asot 3
+
+# Play 5 random Group Therapy episodes
+volu radio grouptherapy 5
+
+# Play 1 random episode from any configured series
+volu radio tritonia 1
+```
+
+**How it works:**
+1. Searches your Volumio library for albums matching the series pattern
+2. Randomly selects N albums
+3. Queues them for playback (in order, shuffle automatically disabled)
+4. Each album plays in full before moving to the next
+
+**Configuration example:**
+```yaml
+radio:
+  asot:
+    name: "A State of Trance"
+    search_query: "ASOT"           # What to search for
+    pattern: "^ASOT\\s+\\d+"       # Regex to match album names
+```
+
+The `pattern` field uses regular expressions to filter albums. Common patterns:
+- `^ASOT\\s+\\d+` - Matches "ASOT 1090", "ASOT 600", etc.
+- `Buddha Bar\\s+\\d+` - Matches "Buddha Bar 1", "Buddha Bar 25", etc.
+- `Episode\\s+\\d+` - Matches "Episode 123", etc.
 
 ### Host Override
 

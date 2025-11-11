@@ -1,0 +1,53 @@
+# Volu Configuration File
+# Copy this file to ~/.config/volu/config.yaml and customize as needed
+
+# Volumio host (hostname or IP address)
+# Default: volumio.local
+# Can be overridden with --host flag or VOLUMIO_HOST environment variable
+host: volumio.local
+
+# Radio series configuration for the 'volu radio' command
+# Each series has:
+#   name: Display name for the series (used in notifications)
+#   search_query: Search term to use with Volumio's search API
+#   pattern: Regular expression to match album/folder names
+#
+# Usage: volu radio <series-key> <count>
+# Example: volu radio asot 3
+radio:
+  # A State of Trance episodes
+  asot:
+    name: "A State of Trance"
+    search_query: "ASOT"
+    pattern: "^ASOT\\s+\\d+"
+
+  # Group Therapy (Above & Beyond)
+  grouptherapy:
+    name: "Group Therapy"
+    search_query: "Group Therapy"
+    pattern: "Group Therapy\\s+\\d+"
+
+  # Tritonia
+  tritonia:
+    name: "Tritonia"
+    search_query: "Tritonia"
+    pattern: "Tritonia\\s+\\d+"
+
+# Add your own radio series:
+#
+# myradio:
+#   name: "My Radio Show"
+#   search_query: "My Radio"
+#   pattern: "Episode\\s+\\d+"
+#
+# Regex pattern tips:
+# - Use \\d+ to match one or more digits
+# - Use \\s+ to match one or more whitespace characters
+# - Use ^ to match the start of the album name
+# - Use $ to match the end of the album name
+# - Use .* to match any characters
+#
+# Examples:
+# - "^ASOT\\s+\\d+" matches "ASOT 1090", "ASOT 600", etc.
+# - "Buddha Bar\\s+\\d+" matches "Buddha Bar 1", "Buddha Bar 25", etc.
+# - "\\d{4}" matches exactly 4 digits

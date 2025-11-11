@@ -365,6 +365,110 @@ func (c *Client) Browse(uri string) ([]BrowseItem, error) {
 	return items, nil
 }
 
+// SearchList represents a list in the search response
+type SearchList struct {
+	Title string       `json:"title"`
+	Items []BrowseItem `json:"items"`
+}
+
+// SearchResponse represents the response from the search API
+type SearchResponse struct {
+	Navigation struct {
+		IsSearchResult bool         `json:"isSearchResult"`
+		Lists          []SearchList `json:"lists"`
+	} `json:"navigation"`
+}
+
+// Search searches the music library for the given query.
+// Returns the raw search response with all result types (albums, tracks, artists, etc.)
+func (c *Client) Search(query string) (*SearchResponse, error) {
+	params := url.Values{}
+	params.Set("query", query)
+
+	body, err := c.get("/api/v1/search", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var response SearchResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse search response: %w", err)
+	}
+
+	return &response, nil
+}
+
+// SearchAlbums searches for albums matching the given query.
+// Filters the results to return only local albums (not TIDAL or other services).
+func (c *Client) SearchAlbums(query string) ([]BrowseItem, error) {
+	response, err := c.Search(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the local albums list
+	// Typically the first list with "Albums" in the title and not containing "TIDAL"
+	for _, list := range response.Navigation.Lists {
+		if containsIgnoreCase(list.Title, "Albums") && !containsIgnoreCase(list.Title, "TIDAL") {
+			// Filter to only include folder type items from mpd service
+			var albums []BrowseItem
+			for _, item := range list.Items {
+				if item.Type == "folder" && item.Service == "mpd" {
+					albums = append(albums, item)
+				}
+			}
+			return albums, nil
+		}
+	}
+
+	// No albums found
+	return []BrowseItem{}, nil
+}
+
+// containsIgnoreCase checks if s contains substr, case-insensitive
+func containsIgnoreCase(s, substr string) bool {
+	sLower := make([]byte, len(s))
+	substrLower := make([]byte, len(substr))
+	for i := 0; i < len(s); i++ {
+		sLower[i] = toLower(s[i])
+	}
+	for i := 0; i < len(substr); i++ {
+		substrLower[i] = toLower(substr[i])
+	}
+	return bytesContains(sLower, substrLower)
+}
+
+// toLower converts a single ASCII character to lowercase
+func toLower(c byte) byte {
+	if c >= 'A' && c <= 'Z' {
+		return c + ('a' - 'A')
+	}
+	return c
+}
+
+// bytesContains checks if b contains substr
+func bytesContains(b, substr []byte) bool {
+	if len(substr) == 0 {
+		return true
+	}
+	if len(substr) > len(b) {
+		return false
+	}
+	for i := 0; i <= len(b)-len(substr); i++ {
+		match := true
+		for j := 0; j < len(substr); j++ {
+			if b[i+j] != substr[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
 // ReplaceAndPlay clears the queue and plays an item
 func (c *Client) ReplaceAndPlay(uri, service string) error {
 	payload := map[string]string{"uri": uri}
