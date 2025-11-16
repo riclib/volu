@@ -10,6 +10,7 @@ import (
 
 	"github.com/riclib/volu/internal/config"
 	"github.com/riclib/volu/internal/elephant"
+	"github.com/riclib/volu/internal/gui"
 	"github.com/riclib/volu/internal/radio"
 	"github.com/riclib/volu/internal/volumio"
 	"github.com/riclib/volu/internal/walker"
@@ -109,6 +110,9 @@ func main() {
 
 	// Elephant provider (placeholder)
 	rootCmd.AddCommand(elephantCmd)
+
+	// Popup GUI
+	rootCmd.AddCommand(popupCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -660,5 +664,16 @@ var elephantCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		provider := elephant.NewProvider(volumioHost)
 		return provider.Run()
+	},
+}
+
+var popupCmd = &cobra.Command{
+	Use:   "popup",
+	Short: "Open GUI music browser",
+	Long:  `Open a graphical popup window for browsing and controlling Volumio.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		popup := gui.NewPopup(client, cfg)
+		popup.Show()
+		return nil
 	},
 }

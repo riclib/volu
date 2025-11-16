@@ -5,9 +5,10 @@ A modern Go-based CLI tool for controlling [Volumio](https://volumio.com) music 
 ## Features
 
 - **CLI Control**: Simple command-line interface for all playback operations
+- **GUI Popup**: Keyboard-first graphical music browser with album art and shortcuts
 - **Radio Series**: Play random episodes from your favorite radio shows (ASOT, Group Therapy, etc.)
 - **YAML Configuration**: Optional config file for host and radio series settings
-- **Waybar Integration**: Real-time status display in your status bar
+- **Waybar Integration**: Real-time status display in your status bar with click-to-popup
 - **Walker Plugin**: Browse and control music through Walker launcher
 - **Elephant Provider**: Native integration with the Elephant launcher (coming soon)
 - **Single Binary**: No runtime dependencies, just compile and run
@@ -129,6 +130,44 @@ The `pattern` field uses regular expressions to filter albums. Common patterns:
 ```bash
 volu -H 192.168.1.100 status
 volu --host volumio2.local play
+```
+
+### GUI Popup
+
+Launch a graphical music browser with keyboard-first controls:
+
+```bash
+volu popup
+```
+
+**Features:**
+- **Now Playing**: Album art, track info, playback controls
+- **Radio Shortcuts**: One-click access to all configured radio series
+- **Keyboard Navigation**:
+  - `ESC` / `q` - Close popup
+  - `Space` - Toggle play/pause
+  - `Enter` - Play selected shortcut
+- **Album Art**: Automatically loads cover art from Volumio
+
+**Hyprland Integration:**
+
+Add to `~/.config/hypr/hyprland.conf`:
+```
+bind = SUPER, M, exec, volu popup
+```
+
+**Waybar Integration (Click-to-Popup):**
+
+Update your Waybar config to open the popup when clicking the Volumio status:
+```jsonc
+"custom/volumio": {
+    "exec": "volu waybar",
+    "return-type": "json",
+    "interval": 2,
+    "format": "{}",
+    "on-click": "volu popup",  // Open GUI instead of toggle
+    "tooltip": true
+}
 ```
 
 ## Waybar Integration
