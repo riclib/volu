@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -486,12 +487,43 @@ func handleWalkerAction(action string) error {
 	}
 }
 
+// Helper function to play ad-hoc artist albums (not in config)
+func playAdHocArtist(artistName string, count int) error {
+	albumCount := count
+	if albumCount == 0 {
+		albumCount = 10 // Default
+	}
+
+	// Create radio player
+	player := radio.NewPlayer(client)
+
+	notify("Volumio Radio",
+		fmt.Sprintf("Searching for %s albums... [ad-hoc artist search]", artistName),
+		"media-playlist-shuffle", false)
+
+	// Search by artist name, filter by exact artist match (case-insensitive)
+	artistPattern := fmt.Sprintf("(?i)^%s$", regexp.QuoteMeta(artistName))
+
+	if err := player.PlayRandomAlbumsByArtist(artistName, artistPattern, "", albumCount); err != nil {
+		notify("Volumio Error", err.Error(), "error", true)
+		return err
+	}
+
+	notify("Volumio Radio",
+		fmt.Sprintf("Playing %d random %s albums [ad-hoc search]", albumCount, artistName),
+		"media-playback-start", false)
+
+	return nil
+}
+
 // Helper function to play radio series
 func playRadioSeries(seriesName string, count int) error {
-	// Get series config
+	// Check if this is a configured series
 	series, exists := cfg.Radio[seriesName]
+
+	// If not found in config, treat as ad-hoc artist search
 	if !exists {
-		return fmt.Errorf("unknown radio series: %s (check your config file at ~/.config/volu/config.yaml)", seriesName)
+		return playAdHocArtist(seriesName, count)
 	}
 
 	// Create radio player
@@ -520,7 +552,7 @@ func playRadioSeries(seriesName string, count int) error {
 		}
 
 		notify("Volumio Radio",
-			fmt.Sprintf("Searching for %s tracks...", series.Name),
+			fmt.Sprintf("Searching for %s tracks... [series: %s]", series.Name, seriesName),
 			"media-playlist-shuffle", false)
 
 		searchQuery := series.TrackArtist
@@ -532,7 +564,7 @@ func playRadioSeries(seriesName string, count int) error {
 		}
 
 		notify("Volumio Radio",
-			fmt.Sprintf("Playing %d random %s tracks", trackCount, series.Name),
+			fmt.Sprintf("Playing %d random %s tracks [series: %s]", trackCount, series.Name, seriesName),
 			"media-playback-start", false)
 
 	} else {
@@ -543,7 +575,7 @@ func playRadioSeries(seriesName string, count int) error {
 		}
 
 		notify("Volumio Radio",
-			fmt.Sprintf("Searching for %s albums...", series.Name),
+			fmt.Sprintf("Searching for %s albums... [series: %s]", series.Name, seriesName),
 			"media-playlist-shuffle", false)
 
 		// Determine if using new album_artist field or legacy search_query
@@ -574,7 +606,7 @@ func playRadioSeries(seriesName string, count int) error {
 		}
 
 		notify("Volumio Radio",
-			fmt.Sprintf("Playing %d random %s albums", albumCount, series.Name),
+			fmt.Sprintf("Playing %d random %s albums [series: %s]", albumCount, series.Name, seriesName),
 			"media-playback-start", false)
 	}
 
@@ -584,15 +616,23 @@ func playRadioSeries(seriesName string, count int) error {
 // Radio command
 
 var radioCmd = &cobra.Command{
-	Use:   "radio <series> [count]",
-	Short: "Play random episodes from a radio series",
-	Long: `Search for albums matching a radio series pattern, randomly select N albums,
+	Use:   "radio <series|artist> [count]",
+	Short: "Play random albums from a series or artist",
+	Long: `Search for albums matching a radio series or artist name, randomly select N albums,
 and queue them for playback. Shuffle is automatically disabled.
 
+CONFIGURED SERIES:
 Series are defined in the config file (~/.config/volu/config.yaml).
+Examples: volu radio asot 3        # 3 ASOT episodes
+          volu radio queen         # 10 random Queen albums (default)
 
-Example: volu radio asot 3
-         volu radio bb      # defaults to 10 albums`,
+AD-HOC ARTIST SEARCH:
+If the series name is not found in config, it's treated as an artist name.
+Examples: volu radio "Leonard Cohen"     # 10 random albums
+          volu radio "Pink Floyd" 5      # 5 random albums
+          volu "Leonard Cohen"           # Direct invocation also works
+
+Notifications will indicate whether a configured series or ad-hoc search was used.`,
 	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		seriesName := args[0]
