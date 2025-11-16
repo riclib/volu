@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -19,12 +20,17 @@ import (
 
 // Popup represents the main GUI window
 type Popup struct {
-	app      fyne.App
-	window   fyne.Window
-	client   *volumio.Client
-	config   *config.Config
-	nowPlay  *NowPlaying
-	selected int // Currently selected shortcut index
+	app         fyne.App
+	window      fyne.Window
+	client      *volumio.Client
+	config      *config.Config
+	nowPlay     *NowPlaying
+	selected    int // Currently selected shortcut index
+	statusLabel *widget.Label
+	titleLabel  *widget.Label
+	artistLabel *widget.Label
+	albumLabel  *widget.Label
+	albumArt    *canvas.Image
 }
 
 // NewPopup creates a new popup window
@@ -59,6 +65,9 @@ func (p *Popup) Show() {
 	// Setup keyboard bindings
 	p.setupKeyBindings()
 
+	// Start periodic state updates
+	p.startStateUpdates()
+
 	p.window.ShowAndRun()
 }
 
@@ -79,28 +88,28 @@ func (p *Popup) buildUI() fyne.CanvasObject {
 
 func (p *Popup) buildNowPlayingSection() fyne.CanvasObject {
 	// Album art
-	albumArt := p.createAlbumArtImage()
+	p.albumArt = p.createAlbumArtImage()
 
 	// Track info
-	titleLabel := widget.NewLabelWithStyle(
+	p.titleLabel = widget.NewLabelWithStyle(
 		p.nowPlay.Title,
 		fyne.TextAlignLeading,
 		fyne.TextStyle{Bold: true},
 	)
-	titleLabel.Wrapping = fyne.TextWrapWord
+	p.titleLabel.Wrapping = fyne.TextWrapWord
 
-	artistLabel := widget.NewLabel(p.nowPlay.Artist)
-	albumLabel := widget.NewLabel(p.nowPlay.Album)
+	p.artistLabel = widget.NewLabel(p.nowPlay.Artist)
+	p.albumLabel = widget.NewLabel(p.nowPlay.Album)
 
 	infoVBox := container.NewVBox(
 		widget.NewLabel("Now Playing"),
-		titleLabel,
-		artistLabel,
-		albumLabel,
+		p.titleLabel,
+		p.artistLabel,
+		p.albumLabel,
 	)
 
 	// Playback controls
-	statusLabel := widget.NewLabel(fmt.Sprintf("%s  %s  🔊 %d%%",
+	p.statusLabel = widget.NewLabel(fmt.Sprintf("%s  %s  🔊 %d%%",
 		getStatusIcon(p.nowPlay.Status),
 		p.nowPlay.Progress,
 		p.nowPlay.Volume,
@@ -111,8 +120,8 @@ func (p *Popup) buildNowPlayingSection() fyne.CanvasObject {
 	// Layout
 	return container.NewBorder(
 		nil,
-		container.NewVBox(statusLabel, controlButtons),
-		albumArt,
+		container.NewVBox(p.statusLabel, controlButtons),
+		p.albumArt,
 		nil,
 		infoVBox,
 	)
@@ -183,17 +192,32 @@ func (p *Popup) buildShortcutsSection() fyne.CanvasObject {
 		idx := i // Capture for closure
 		shortcut := sc
 
-		cardLabel := widget.NewLabel(fmt.Sprintf("%s %s", shortcut.Icon, shortcut.Name))
-		cardLabel.Alignment = fyne.TextAlignCenter
+		// Create card with icon and name
+		iconLabel := widget.NewLabelWithStyle(
+			shortcut.Icon,
+			fyne.TextAlignCenter,
+			fyne.TextStyle{Bold: true},
+		)
+		// Make icon larger
+		iconLabel.TextStyle.Symbol = true
+
+		nameLabel := widget.NewLabel(shortcut.Name)
+		nameLabel.Alignment = fyne.TextAlignCenter
+		nameLabel.Wrapping = fyne.TextWrapWord
+
+		cardContent := container.NewVBox(
+			iconLabel,
+			nameLabel,
+		)
 
 		card := widget.NewButton("", func() {
 			p.playRadio(shortcut.Key)
 		})
 
-		// Custom rendering with label
-		cards[idx] = container.NewMax(
+		// Overlay card content on button
+		cards[idx] = container.NewStack(
 			card,
-			container.NewCenter(cardLabel),
+			container.NewCenter(cardContent),
 		)
 	}
 
@@ -202,7 +226,7 @@ func (p *Popup) buildShortcutsSection() fyne.CanvasObject {
 
 	return container.NewVBox(
 		widget.NewLabel("Radio Shortcuts"),
-		grid,
+		container.NewScroll(grid),
 	)
 }
 
@@ -296,5 +320,51 @@ func (p *Popup) activateSelected() {
 	shortcuts := LoadShortcuts(p.config)
 	if p.selected >= 0 && p.selected < len(shortcuts) {
 		p.playRadio(shortcuts[p.selected].Key)
+	}
+}
+
+func (p *Popup) startStateUpdates() {
+	// Update every 2 seconds
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			p.updateNowPlaying()
+		}
+	}()
+}
+
+func (p *Popup) updateNowPlaying() {
+	state, err := p.client.GetState()
+	if err != nil {
+		slog.Error("popup", "updateState", err)
+		return
+	}
+
+	p.nowPlay = NewNowPlaying(state)
+	p.nowPlay.VoluHost = p.config.Host
+
+	// Update UI elements
+	p.titleLabel.SetText(p.nowPlay.Title)
+	p.artistLabel.SetText(p.nowPlay.Artist)
+	p.albumLabel.SetText(p.nowPlay.Album)
+	p.statusLabel.SetText(fmt.Sprintf("%s  %s  🔊 %d%%",
+		getStatusIcon(p.nowPlay.Status),
+		p.nowPlay.Progress,
+		p.nowPlay.Volume,
+	))
+
+	// Update album art if changed
+	artURL := getAlbumArtURL(p.nowPlay.AlbumArt, p.nowPlay.VoluHost)
+	if artURL != "" {
+		uri, err := storage.ParseURI(artURL)
+		if err == nil {
+			p.albumArt.Resource = nil
+			if img := canvas.NewImageFromURI(uri); img != nil {
+				p.albumArt.Resource = img.Resource
+				p.albumArt.Refresh()
+			}
+		}
 	}
 }

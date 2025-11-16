@@ -153,6 +153,11 @@ volu popup
 
 Add to `~/.config/hypr/hyprland.conf`:
 ```
+# Volu popup window rule (make it float)
+windowrulev2 = float, title:^(Volu - Music Browser)$
+windowrulev2 = center, title:^(Volu - Music Browser)$
+
+# Keybind to launch popup
 bind = SUPER, M, exec, volu popup
 ```
 
