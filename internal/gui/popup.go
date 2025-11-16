@@ -65,8 +65,8 @@ func (p *Popup) Show() {
 	// Setup keyboard bindings
 	p.setupKeyBindings()
 
-	// Start periodic state updates
-	p.startStateUpdates()
+	// TODO: Add periodic state updates (needs proper thread-safe implementation)
+	// p.startStateUpdates()
 
 	p.window.ShowAndRun()
 }
@@ -345,7 +345,7 @@ func (p *Popup) updateNowPlaying() {
 	p.nowPlay = NewNowPlaying(state)
 	p.nowPlay.VoluHost = p.config.Host
 
-	// Update UI elements
+	// Update UI elements - SetText is thread-safe and triggers refresh
 	p.titleLabel.SetText(p.nowPlay.Title)
 	p.artistLabel.SetText(p.nowPlay.Artist)
 	p.albumLabel.SetText(p.nowPlay.Album)
