@@ -9,10 +9,22 @@ import (
 )
 
 // RadioSeries defines a radio series configuration for the radio command.
+// Supports two modes: album-based (queue random albums) and track-based (queue random tracks).
+// These modes are mutually exclusive - use either album fields OR track fields, not both.
 type RadioSeries struct {
-	Name        string `yaml:"name"`         // Display name (e.g., "A State of Trance")
-	SearchQuery string `yaml:"search_query"` // Search query for Volumio API
-	Pattern     string `yaml:"pattern"`      // Regex pattern to match album names
+	Name string `yaml:"name"` // Display name (e.g., "A State of Trance")
+
+	// Legacy fields (backward compatible, treated as album-based)
+	SearchQuery string `yaml:"search_query,omitempty"` // Search query for Volumio API (deprecated: use AlbumArtist)
+	Pattern     string `yaml:"pattern,omitempty"`      // Regex pattern to match album names (deprecated: use AlbumPattern)
+
+	// Album-based mode: Search for albums, filter by artist, queue N random albums
+	AlbumArtist  string `yaml:"album_artist,omitempty"`  // Case-insensitive regex to match album artist field
+	AlbumPattern string `yaml:"album_pattern,omitempty"` // Case-insensitive regex to match album title
+
+	// Track-based mode: Search for tracks, filter by artist, queue N random tracks
+	TrackArtist string `yaml:"track_artist,omitempty"` // Case-insensitive regex to match track artist field
+	TrackCount  int    `yaml:"track_count,omitempty"`  // Number of tracks to queue (default: 50)
 }
 
 // Config represents the volu configuration file structure.

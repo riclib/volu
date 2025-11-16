@@ -425,6 +425,33 @@ func (c *Client) SearchAlbums(query string) ([]BrowseItem, error) {
 	return []BrowseItem{}, nil
 }
 
+// SearchTracks searches for tracks matching the given query.
+// Filters the results to return only local tracks (not TIDAL or other services).
+func (c *Client) SearchTracks(query string) ([]BrowseItem, error) {
+	response, err := c.Search(query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the local tracks list
+	// Typically the first list with "Tracks" in the title and not containing "TIDAL"
+	for _, list := range response.Navigation.Lists {
+		if containsIgnoreCase(list.Title, "Tracks") && !containsIgnoreCase(list.Title, "TIDAL") {
+			// Filter to only include song type items from mpd service
+			var tracks []BrowseItem
+			for _, item := range list.Items {
+				if item.Type == "song" && item.Service == "mpd" {
+					tracks = append(tracks, item)
+				}
+			}
+			return tracks, nil
+		}
+	}
+
+	// No tracks found
+	return []BrowseItem{}, nil
+}
+
 // containsIgnoreCase checks if s contains substr, case-insensitive
 func containsIgnoreCase(s, substr string) bool {
 	sLower := make([]byte, len(s))

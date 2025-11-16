@@ -497,21 +497,86 @@ func playRadioSeries(seriesName string, count int) error {
 	// Create radio player
 	player := radio.NewPlayer(client)
 
-	// Show search notification
-	notify("Volumio Radio",
-		fmt.Sprintf("Searching for %s episodes...", series.Name),
-		"media-playlist-shuffle", false)
+	// Determine mode: track-based or album-based
+	isTrackMode := series.TrackArtist != ""
+	isAlbumMode := series.AlbumArtist != "" || series.AlbumPattern != "" || series.SearchQuery != "" || series.Pattern != ""
 
-	// Play random episodes
-	if err := player.PlayRandomEpisodes(series.SearchQuery, series.Pattern, count); err != nil {
-		notify("Volumio Error", err.Error(), "error", true)
-		return err
+	if isTrackMode && isAlbumMode {
+		return fmt.Errorf("config error: series %q has both track and album fields - use one mode only", seriesName)
 	}
 
-	// Success notification
-	notify("Volumio Radio",
-		fmt.Sprintf("Playing %d random %s episodes", count, series.Name),
-		"media-playback-start", false)
+	if !isTrackMode && !isAlbumMode {
+		return fmt.Errorf("config error: series %q must have either track_artist or album search fields", seriesName)
+	}
+
+	if isTrackMode {
+		// Track-based mode
+		trackCount := series.TrackCount
+		if trackCount == 0 {
+			trackCount = 50 // Default
+		}
+		if count > 0 {
+			trackCount = count // Command-line override
+		}
+
+		notify("Volumio Radio",
+			fmt.Sprintf("Searching for %s tracks...", series.Name),
+			"media-playlist-shuffle", false)
+
+		searchQuery := series.TrackArtist
+		artistPattern := fmt.Sprintf("(?i)%s", series.TrackArtist) // Case-insensitive
+
+		if err := player.PlayRandomTracks(searchQuery, artistPattern, trackCount); err != nil {
+			notify("Volumio Error", err.Error(), "error", true)
+			return err
+		}
+
+		notify("Volumio Radio",
+			fmt.Sprintf("Playing %d random %s tracks", trackCount, series.Name),
+			"media-playback-start", false)
+
+	} else {
+		// Album-based mode (backward compatible)
+		albumCount := count
+		if albumCount == 0 {
+			albumCount = 10 // Default
+		}
+
+		notify("Volumio Radio",
+			fmt.Sprintf("Searching for %s albums...", series.Name),
+			"media-playlist-shuffle", false)
+
+		// Determine if using new album_artist field or legacy search_query
+		if series.AlbumArtist != "" {
+			// New mode: filter by album artist field
+			artistPattern := series.AlbumArtist
+			titlePattern := series.AlbumPattern // Optional, can be empty
+
+			if err := player.PlayRandomAlbumsByArtist(series.AlbumArtist, artistPattern, titlePattern, albumCount); err != nil {
+				notify("Volumio Error", err.Error(), "error", true)
+				return err
+			}
+		} else {
+			// Legacy mode: search_query + pattern (backward compatible)
+			if series.SearchQuery == "" {
+				return fmt.Errorf("config error: album mode requires search_query or album_artist")
+			}
+
+			pattern := series.Pattern
+			if pattern == "" {
+				pattern = ".*" // Match all if no pattern specified
+			}
+
+			if err := player.PlayRandomEpisodes(series.SearchQuery, pattern, albumCount); err != nil {
+				notify("Volumio Error", err.Error(), "error", true)
+				return err
+			}
+		}
+
+		notify("Volumio Radio",
+			fmt.Sprintf("Playing %d random %s albums", albumCount, series.Name),
+			"media-playback-start", false)
+	}
 
 	return nil
 }

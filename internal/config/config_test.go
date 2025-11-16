@@ -108,3 +108,126 @@ func TestRadioSeriesStruct(t *testing.T) {
 		t.Errorf("Expected pattern '^test\\d+', got '%s'", series.Pattern)
 	}
 }
+
+func TestRadioSeriesWithArtistFields(t *testing.T) {
+	// Test album-based series with artist pattern
+	albumSeries := RadioSeries{
+		Name:          "Armin Albums",
+		AlbumArtist:   "Armin van Buuren",
+		AlbumPattern:  "^ASOT\\s+\\d+",
+	}
+
+	if albumSeries.AlbumArtist != "Armin van Buuren" {
+		t.Errorf("Expected album artist 'Armin van Buuren', got '%s'", albumSeries.AlbumArtist)
+	}
+
+	if albumSeries.AlbumPattern != "^ASOT\\s+\\d+" {
+		t.Errorf("Expected album pattern '^ASOT\\s+\\d+', got '%s'", albumSeries.AlbumPattern)
+	}
+
+	// Test track-based series
+	trackSeries := RadioSeries{
+		Name:        "Arash Tracks",
+		TrackArtist: "Arash",
+		TrackCount:  50,
+	}
+
+	if trackSeries.TrackArtist != "Arash" {
+		t.Errorf("Expected track artist 'Arash', got '%s'", trackSeries.TrackArtist)
+	}
+
+	if trackSeries.TrackCount != 50 {
+		t.Errorf("Expected track count 50, got %d", trackSeries.TrackCount)
+	}
+}
+
+func TestBackwardCompatibility(t *testing.T) {
+	// Old format should still work
+	oldFormat := `
+host: volumio.local
+radio:
+  asot:
+    name: "A State of Trance"
+    search_query: "ASOT"
+    pattern: "^ASOT\\s+\\d+"
+`
+
+	cfg := &Config{}
+	err := yaml.Unmarshal([]byte(oldFormat), cfg)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed for old format: %v", err)
+	}
+
+	asot, exists := cfg.Radio["asot"]
+	if !exists {
+		t.Fatal("Expected 'asot' radio series to exist")
+	}
+
+	if asot.SearchQuery != "ASOT" {
+		t.Errorf("Expected search query 'ASOT', got '%s'", asot.SearchQuery)
+	}
+
+	if asot.Pattern != "^ASOT\\s+\\d+" {
+		t.Errorf("Expected pattern '^ASOT\\s+\\d+', got '%s'", asot.Pattern)
+	}
+}
+
+func TestNewAlbumArtistFormat(t *testing.T) {
+	newFormat := `
+host: volumio.local
+radio:
+  armin:
+    name: "Armin Albums"
+    album_artist: "Armin van Buuren"
+    album_pattern: "^ASOT\\s+\\d+"
+`
+
+	cfg := &Config{}
+	err := yaml.Unmarshal([]byte(newFormat), cfg)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed for new album format: %v", err)
+	}
+
+	armin, exists := cfg.Radio["armin"]
+	if !exists {
+		t.Fatal("Expected 'armin' radio series to exist")
+	}
+
+	if armin.AlbumArtist != "Armin van Buuren" {
+		t.Errorf("Expected album artist 'Armin van Buuren', got '%s'", armin.AlbumArtist)
+	}
+
+	if armin.AlbumPattern != "^ASOT\\s+\\d+" {
+		t.Errorf("Expected album pattern '^ASOT\\s+\\d+', got '%s'", armin.AlbumPattern)
+	}
+}
+
+func TestNewTrackArtistFormat(t *testing.T) {
+	newFormat := `
+host: volumio.local
+radio:
+  arash:
+    name: "Arash Tracks"
+    track_artist: "Arash"
+    track_count: 50
+`
+
+	cfg := &Config{}
+	err := yaml.Unmarshal([]byte(newFormat), cfg)
+	if err != nil {
+		t.Fatalf("Unmarshal() failed for new track format: %v", err)
+	}
+
+	arash, exists := cfg.Radio["arash"]
+	if !exists {
+		t.Fatal("Expected 'arash' radio series to exist")
+	}
+
+	if arash.TrackArtist != "Arash" {
+		t.Errorf("Expected track artist 'Arash', got '%s'", arash.TrackArtist)
+	}
+
+	if arash.TrackCount != 50 {
+		t.Errorf("Expected track count 50, got %d", arash.TrackCount)
+	}
+}
